@@ -1,0 +1,76 @@
+name: robo-study
+
+services:
+  robo:
+    image: robo-study:humble
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      network: host
+      args:
+        HOST_UID: ${HOST_UID:-1000}
+        HOST_GID: ${HOST_GID:-1000}
+        HTTP_PROXY: ${HTTP_PROXY:-}
+        HTTPS_PROXY: ${HTTPS_PROXY:-}
+        ALL_PROXY: ${ALL_PROXY:-}
+        NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1}
+        http_proxy: ${http_proxy:-${HTTP_PROXY:-}}
+        https_proxy: ${https_proxy:-${HTTPS_PROXY:-}}
+    hostname: robo
+    init: true
+    runtime: nvidia
+    network_mode: host
+    shm_size: 2gb
+    # Required for access to the host X11 socket on this SELinux host.
+    security_opt:
+      - label=disable
+    environment:
+      DISPLAY: ${DISPLAY:-:0}
+      XAUTHORITY: /run/robo-xauth/Xauthority
+      QT_X11_NO_MITSHM: "1"
+      QT_QPA_PLATFORM: xcb
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics,display
+      __NV_PRIME_RENDER_OFFLOAD: "1"
+      __GLX_VENDOR_LIBRARY_NAME: nvidia
+      ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
+      ROS_LOCALHOST_ONLY: ${ROS_LOCALHOST_ONLY:-1}
+      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      HTTP_PROXY: ${HTTP_PROXY:-}
+      HTTPS_PROXY: ${HTTPS_PROXY:-}
+      ALL_PROXY: ${ALL_PROXY:-}
+      NO_PROXY: ${NO_PROXY:-localhost,127.0.0.1,::1}
+      http_proxy: ${http_proxy:-${HTTP_PROXY:-}}
+      https_proxy: ${https_proxy:-${HTTPS_PROXY:-}}
+      TZ: Europe/Moscow
+    volumes:
+      - type: bind
+        source: .
+        target: /work
+      - type: volume
+        source: student-home
+        target: /home/student
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./.runtime/xauth
+        target: /run/robo-xauth
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${HOME}/.gitconfig
+        target: /home/student/.gitconfig
+        read_only: true
+        bind:
+          create_host_path: false
+    working_dir: /work/ros2_ws
+    command: [sleep, infinity]
+    restart: "no"
+
+volumes:
+  student-home:

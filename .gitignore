@@ -1,0 +1,71 @@
+# Local environment and display authorization
+.env
+.env.*
+!.env.example
+!.env.*.example
+/.runtime/
+/compose.override.yaml
+/compose.override.yml
+
+# ROS / colcon build output
+/ros2_ws/build/
+/ros2_ws/install/
+/ros2_ws/log/
+compile_commands.json
+
+# ROS and Gazebo user caches (if created inside the project)
+.ros/
+.ignition/
+.gz/
+
+# Rosbag recordings, including compressed and unfinished recordings
+rosbag2_*/
+*.bag
+*.bag.active
+*.bag.orig
+*.db3
+*.db3-wal
+*.db3-shm
+*.db3.zstd
+*.mcap
+*.mcap.zstd
+
+# Python environments and generated files
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+*.egg-info/
+.eggs/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+
+# Local IDE files; keep shareable launch/task/extension definitions
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# Editor and office temporary files
+.~lock.*#
+~$*
+*.swp
+*.swo
+*~
+\#*\#
+*.tmp
+*.log
+
+# Desktop metadata
+.DS_Store
+Thumbs.db
+Desktop.ini
