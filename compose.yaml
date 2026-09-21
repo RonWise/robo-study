@@ -22,6 +22,7 @@ services:
     network_mode: host
     shm_size: 2gb
     # Required for access to the host X11 socket on this SELinux host.
+    # rmw_cyclonedds_cpp
     security_opt:
       - label=disable
     environment:
@@ -29,13 +30,14 @@ services:
       XAUTHORITY: /run/robo-xauth/Xauthority
       QT_X11_NO_MITSHM: "1"
       QT_QPA_PLATFORM: xcb
+      IGN_GAZEBO_RESOURCE_PATH: /work/assets/models:/work/assets/worlds
       NVIDIA_VISIBLE_DEVICES: all
       NVIDIA_DRIVER_CAPABILITIES: compute,utility,graphics,display
       __NV_PRIME_RENDER_OFFLOAD: "1"
       __GLX_VENDOR_LIBRARY_NAME: nvidia
       ROS_DOMAIN_ID: ${ROS_DOMAIN_ID:-0}
       ROS_LOCALHOST_ONLY: ${ROS_LOCALHOST_ONLY:-1}
-      RMW_IMPLEMENTATION: rmw_cyclonedds_cpp
+      RMW_IMPLEMENTATION: rmw_fastrtps_cpp
       HTTP_PROXY: ${HTTP_PROXY:-}
       HTTPS_PROXY: ${HTTPS_PROXY:-}
       ALL_PROXY: ${ALL_PROXY:-}

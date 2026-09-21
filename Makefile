@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help init build up start stop down restart rebuild rebuild-clean shell root status logs run gpu opengl cuda gazebo lidar rviz colcon rosdep topics doctor config
+.PHONY: help init build up start stop down restart rebuild rebuild-clean shell root status logs run gpu opengl cuda gazebo warehouse lidar rviz colcon rosdep topics doctor config
 ROBO := bash ./scripts/robo.sh
 export CMD
 
@@ -41,6 +41,8 @@ cuda: ## Запустить вычислительный тест CUDA
 	@$(ROBO) exec python3 /work/gpu-check/cuda_smoke.py
 gazebo: ## Открыть пустой мир Gazebo Fortress
 	@$(ROBO) gazebo
+warehouse: ## Открыть локальный склад с Jetbot
+	@$(ROBO) warehouse
 lidar: ## Открыть пример Gazebo visualize_lidar.sdf
 	@$(ROBO) lidar
 rviz: ## Открыть RViz2

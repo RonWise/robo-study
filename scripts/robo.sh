@@ -77,14 +77,15 @@ case "$command" in
         "${compose[@]}" build "${options[@]}" robo
         "${compose[@]}" up -d --force-recreate robo
         ;;
-    shell) gui_running; "${compose[@]}" exec robo bash ;;
-    root) gui_running; "${compose[@]}" exec --user root --env HOME=/root robo bash ;;
+    shell) gui_running; exec "${compose[@]}" exec robo bash ;;
+    root) gui_running; exec "${compose[@]}" exec --user root --env HOME=/root robo bash ;;
     status) "${compose[@]}" ps -a ;;
     logs) "${compose[@]}" logs --follow --tail=100 robo ;;
     run) running; : "${CMD:?Пример: make run CMD='ros2 topic list'}"; exec_ros bash -lc "$CMD" ;;
     exec) running; (( $# > 0 )); exec_ros "$@" ;;
     opengl) gui_running; exec_ros glxinfo -B ;;
     gazebo) gui_running; exec_ros ign gazebo -v 3 -r /usr/share/ignition/ignition-gazebo6/worlds/empty.sdf ;;
+    warehouse) gui_running; exec_ros ign gazebo -v 4 -r /work/assets/worlds/warehouse/jetbot_warehouse.sdf ;;
     lidar) gui_running; exec_ros ign gazebo -v 3 -r /usr/share/ignition/ignition-gazebo6/worlds/visualize_lidar.sdf ;;
     rviz) gui_running; exec_ros rviz2 ;;
     run-rosdep)

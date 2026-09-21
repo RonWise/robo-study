@@ -160,6 +160,176 @@ ros2 topic echo /lidar --once
 Этот мост передаёт данные из Gazebo в ROS. Для конкретной модели Jetbot
 имена топиков необходимо сверить с её SDF/launch-файлами.
 
+## Локальные копии моделей в assets
+
+Модель Jetbot скопирована из `/data/WORK/repo/jetbot_ros_gazebo/models/jetbot`
+в `assets/models/jetbot` вместе с meshes и вариантами SDF. Это независимая
+редактируемая копия; исходный репозиторий при её изменении не затрагивается.
+
+- На хосте: `/data/WORK/study/robo/assets/models/jetbot/model.sdf`.
+- В контейнере: `/work/assets/models/jetbot/model.sdf`.
+- Gazebo выбирает активный SDF по файлу `assets/models/jetbot/model.config`.
+
+Весь `assets` уже доступен через существующий mount проекта в `/work`.
+В Compose задан `IGN_GAZEBO_RESOURCE_PATH=/work/assets/models:/work/assets/worlds`.
+Внутри элемента `<world>` вашего SDF подключайте модель так:
+
+```xml
+<include>
+  <uri>model://jetbot</uri>
+  <name>jetbot</name>
+  <pose>0 0 0.2 0 0 0</pose>
+</include>
+```
+
+Миры удобно хранить в `assets/worlds`. Пример запуска своего мира с хоста:
+
+```bash
+make run CMD='ign gazebo -v 3 -r /work/assets/worlds/my_world.sdf'
+```
+
+После правки модели перезапустите мир. Пересборка образа и `make colcon`
+для SDF и meshes не нужны. Для других моделей копируйте весь каталог модели
+в `assets/models/<имя>` и используйте `model://<имя>`.
+О происхождении копии и исправлениях путей — [assets/README.md](assets/README.md).
+
+## Готовый склад с Jetbot
+
+Мир `assets/worlds/warehouse/jetbot_warehouse.sdf` — локальная копия
+**Tugbot in warehouse**, в которой Tugbot заменён на Jetbot.
+Все модели окружения и meshes сохранены в `assets/models`; скачивание Fuel
+для этого мира не требуется. Мир называется `world_demo`, робот — `jetbot`.
+
+### Запуск с хоста
+
+В терминале ноутбука:
+
+```bash
+cd /data/WORK/study/robo
+make up
+make warehouse
+```
+
+Если контейнер уже запущен, достаточно `make warehouse` из корня проекта.
+Команда открывает GUI Gazebo и запускает симуляцию склада с Jetbot.
+
+### Запуск из контейнера
+
+Чтобы войти в контейнер, выполните на хосте:
+
+```bash
+cd /data/WORK/study/robo
+make up
+make shell
+```
+
+Затем в терминале контейнера:
+
+```bash
+ign gazebo -v 4 -r /work/assets/worlds/warehouse/jetbot_warehouse.sdf
+```
+
+Если вы уже внутри контейнера, выполняйте только команду `ign gazebo`.
+Абсолютный путь позволяет запускать мир из любой папки контейнера.
+`-v 4` включает подробный журнал, `-r` сразу запускает симуляцию.
+Это два альтернативных способа запуска одного мира; одновременно запускать
+его через `make warehouse` и `ign gazebo` не нужно.
+
+### Выбор модели и редактирование
+
+В SDF мира робот подключается блоком:
+
+```xml
+<include>
+  <uri>model://jetbot</uri>
+  <name>jetbot</name>
+  <pose>13.9 -10.6 0.1 -1.57079632679 0 0</pose>
+</include>
+```
+
+Четвёртое число в `pose` — roll: поворот −π/2 вокруг X ставит Jetbot
+на колёса. При нулевом повороте эта модель появляется на боку.
+
+`model://jetbot` указывает на папку `assets/models/jetbot`. Файл
+`assets/models/jetbot/model.config` выбирает конкретный SDF внутри неё:
+
+```xml
+<sdf version="1.7">model.sdf</sdf>
+```
+
+Сейчас выбран `model.sdf` — упрощённая модель с проверенными камерой и
+GPU-лидаром. `<name>jetbot</name>` в блоке `include` задаёт имя экземпляра
+робота в мире, а не имя SDF-файла.
+
+Вариант `model_high_resolution.sdf` также проверен отдельным запуском:
+При прежней позе с нулевым roll STL-геометрия загружалась, но все 720 измерений лидара оказались `-inf`,
+а проверенный кадр камеры показывал размытую поверхность вблизи.
+После исправления roll этот вариант ещё не проверялся и не выбран по умолчанию.
+
+Вся папка проекта подключена в контейнер как `/work`. Редактируйте модели
+и мир на хосте, затем закройте окно Gazebo и повторите команду запуска.
+Для изменений SDF и meshes пересборка образа и `make colcon` не нужны.
+
+В панели GUI Teleop настроен топик `/model/jetbot/cmd_vel`.
+ROS-ноды и `ros_gz_bridge` запускаются отдельно: само открытие склада
+не передаёт сенсоры в ROS. Команды моста камеры и лидара, источник мира
+и изменения перечислены в [README склада](assets/worlds/warehouse/README.md).
+
+### Окна ROS-топиков и камеры
+
+`rqt_topic` и `rqt_image_view` уже установлены в контейнере. Для просмотра
+сенсоров склада оставьте Gazebo работающим и запустите мост Gazebo → ROS.
+
+В отдельном терминале на хосте войдите в контейнер:
+
+```bash
+cd /data/WORK/study/robo
+make shell
+```
+
+Внутри контейнера запустите мост камеры и лидара и оставьте его работающим:
+
+```bash
+ros2 run ros_gz_bridge parameter_bridge \
+  '/world/world_demo/model/jetbot/link/lidar_link/sensor/scan_front/scan@sensor_msgs/msg/LaserScan[ignition.msgs.LaserScan' \
+  '/world/world_demo/model/jetbot/link/camera_link/sensor/color/image@sensor_msgs/msg/Image[ignition.msgs.Image'
+```
+
+Если такой мост уже запущен, второй экземпляр не нужен. Остановка моста —
+`Ctrl+C` в его терминале.
+
+Откройте ещё один терминал контейнера через `make shell` с хоста.
+Внутри контейнера откройте окно списка топиков и просмотра их сообщений:
+
+```bash
+ros2 run rqt_topic rqt_topic &
+```
+
+Для отдельного окна изображения камеры:
+
+```bash
+ros2 run rqt_image_view rqt_image_view &
+```
+
+В выпадающем списке окна камеры выберите:
+
+```text
+/world/world_demo/model/jetbot/link/camera_link/sensor/color/image
+```
+
+`&` запускает окно в фоне и оставляет терминал свободным. Оставьте этот
+терминал открытым на время работы с окнами; закрыть окно можно обычной
+кнопкой закрытия. В `rqt_topic` включите просмотр нужного топика и раскройте
+его поля. Лидар доступен в топике:
+
+```text
+/world/world_demo/model/jetbot/link/lidar_link/sensor/scan_front/scan
+```
+
+Если топики сенсоров отсутствуют или изображение не обновляется, проверьте,
+что склад запущен, симуляция не на паузе и мост работает. Список ROS-топиков
+можно проверить в терминале контейнера командой `ros2 topic list`.
+
 ## Работа с ROS-пакетами и Jetbot
 
 Клонирование модели преподавателя на хосте, один раз:
@@ -261,8 +431,15 @@ ROS_LOCALHOST_ONLY=1
 
 В GUI штатного примера `visualize_lidar.sdf` при старте были сообщения о
 `tooltipDelay`/`tooltipTimeout` и `Lidar pointer is not set`. Они не помешали
-проверенному получению измерений через мост ROS. Полный сценарий Jetbot,
-камера, навигация Nav2 и подключение к физическому роботу ещё не проверялись.
+проверенному получению измерений через мост ROS.
+
+Локальный склад с Jetbot также проверен: GUI запущен, через `ros_gz_bridge`
+получены изображение камеры 848×480 (`rgb8`) и LaserScan из 720 лучей
+(519 с конечной дальностью в проверочном кадре). После исправления коллизии
+камеры в локальной модели ошибок в журнале этого запуска Gazebo не было.
+Команды моста приведены в [README склада](assets/worlds/warehouse/README.md).
+Управление движением Jetbot, навигация Nav2 и подключение к физическому роботу
+ещё не проверялись; ROS-пакет Jetbot в workspace пока не собран.
 
 ## Основа конфигурации
 
