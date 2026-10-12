@@ -66,7 +66,7 @@ case "$command" in
     init) echo "Готово: $ROOT/ros2_ws/src; настройки в .env." ;;
     config) "${compose[@]}" config --quiet ;;
     build) "${compose[@]}" build "$@" robo ;;
-    up) gui_auth; "${compose[@]}" up -d --build robo ;;
+    up) gui_auth; "${compose[@]}" up -d --no-build robo ;;
     stop) "${compose[@]}" stop robo ;;
     down) "${compose[@]}" down ;;
     restart) gui_auth; "${compose[@]}" up -d --force-recreate robo ;;
@@ -85,6 +85,24 @@ case "$command" in
     exec) running; (( $# > 0 )); exec_ros "$@" ;;
     opengl) gui_running; exec_ros glxinfo -B ;;
     gazebo) gui_running; exec_ros ign gazebo -v 3 -r /usr/share/ignition/ignition-gazebo6/worlds/empty.sdf ;;
+    hw1)
+        gui_running
+        exec_ros colcon build --symlink-install --packages-select jetbot_target_follower
+        exec_ros env ROS_DOMAIN_ID=45 ROS_LOCALHOST_ONLY=1 IGN_PARTITION=robo_hw1 ros2 launch jetbot_target_follower perception_sim.launch.py
+        ;;
+    hw1-drive)
+        gui_running
+        exec_ros colcon build --symlink-install --packages-select jetbot_target_follower
+        exec_ros env ROS_DOMAIN_ID=45 ROS_LOCALHOST_ONLY=1 IGN_PARTITION=robo_hw1 ros2 launch jetbot_target_follower drive_sim.launch.py
+        ;;
+    hw1-teleop)
+        running
+        exec_ros env ROS_DOMAIN_ID=45 ROS_LOCALHOST_ONLY=1 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=/cmd_vel_teleop -p speed:=0.12 -p turn:=0.5 -p repeat_rate:=10.0 -p key_timeout:=0.3
+        ;;
+    hw1-view)
+        gui_running
+        exec_ros env ROS_DOMAIN_ID=45 ROS_LOCALHOST_ONLY=1 ros2 run rqt_image_view rqt_image_view /target/debug_image
+        ;;
     warehouse) gui_running; exec_ros ign gazebo -v 4 -r /work/assets/worlds/warehouse/jetbot_warehouse.sdf ;;
     lidar) gui_running; exec_ros ign gazebo -v 3 -r /usr/share/ignition/ignition-gazebo6/worlds/visualize_lidar.sdf ;;
     rviz) gui_running; exec_ros rviz2 ;;

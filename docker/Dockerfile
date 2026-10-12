@@ -12,7 +12,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     python3-rosdep python3-vcstool python3-opencv \
     ros-humble-ros-gz \
     ros-humble-rmw-cyclonedds-cpp \
-    ros-humble-teleop-twist-keyboard \
+    ros-humble-teleop-twist-keyboard ros-humble-twist-mux \
     ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox \
     ros-humble-xacro ros-humble-joint-state-publisher-gui \
     ros-humble-robot-state-publisher \

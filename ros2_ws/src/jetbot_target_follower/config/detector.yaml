@@ -1,0 +1,11 @@
+target_detector:
+  ros__parameters:
+    dictionary: DICT_4X4_50
+    marker_id: 0
+    # Length of the black square, excluding the white margin (metres).
+    marker_size: 0.24
+    image_topic: /camera/image/raw
+    camera_info_topic: /camera/camera_info
+    optical_frame: camera_optical_frame
+    detection_timeout: 1.0
+    max_reprojection_error: 3.0

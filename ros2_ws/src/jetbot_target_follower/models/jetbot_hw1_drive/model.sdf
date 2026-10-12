@@ -1,0 +1,343 @@
+<?xml version='1.0' encoding='utf-8'?>
+<sdf version="1.9">
+  <model name="jetbot_hw1_drive">
+    <pose>0 0 0 0 0 0</pose>
+    <static>false</static>
+    <frame name="base_footprint" attached_to="base_link">
+      <pose>0 0.035 0 1.5708 0 0</pose>
+    </frame>
+    <link name="base_link">
+      <pose relative_to="__model__">0 0 0 0 0 0</pose>
+      <inertial>
+        <pose>-0.02 -0.035 0 0 0 0</pose>
+        <mass>0.61946565589</mass>
+        <inertia>
+          <ixx>0.00174482828474</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.00174482828474</iyy>
+          <iyz>0</iyz>
+          <izz>0.00174482828474</izz>
+        </inertia>
+      </inertial>
+      <visual name="base_link_visual">
+        <pose>-0.02 -0.044 0.003 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.13 0.13 0.13</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0 1 0 1</ambient>
+          <diffuse>0 1 0 1</diffuse>
+        </material>
+      </visual>
+      <collision name="base_link_collision">
+        <pose>-0.02 -0.044 0.003 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.13 0.13 0.13</size>
+          </box>
+        </geometry>
+      </collision>
+    </link>
+    <link name="caster_ball_link">
+      <pose relative_to="base_link">-0.083 0.0208 0 -1.5708 0 3.1416</pose>
+      <inertial>
+        <pose>-1.8666e-06 -8.4152e-07 -0.0059479 0 0 0</pose>
+        <mass>0.00738217222124</mass>
+        <inertia>
+          <ixx>1.58496482716e-07</ixx>
+          <ixy>4.18424271927e-11</ixy>
+          <ixz>1.9004586857e-11</ixz>
+          <iyy>1.12358680665e-07</iyy>
+          <iyz>1.08270207336e-14</iyz>
+          <izz>1.63464597276e-07</izz>
+        </inertia>
+      </inertial>
+      <visual name="caster_ball_visual">
+        <pose>0 0 -0.011 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.005</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.61176 0.65882 0.67059 1</ambient>
+          <diffuse>0.61176 0.65882 0.67059 1</diffuse>
+        </material>
+      </visual>
+      <collision name="caster_ball_collision">
+        <pose>0 0 -0.011 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.005</radius>
+          </sphere>
+        </geometry>
+        <surface>
+          <friction>
+            <ode>
+              <mu>0.01</mu>
+              <mu2>0.01</mu2>
+            </ode>
+          </friction>
+        </surface>
+      </collision>
+    </link>
+    <link name="camera_link">
+      <pose relative_to="base_link">0.06 -0.14 0 1.5707963267948966 0 0</pose>
+      <inertial>
+        <pose>7.2979e-05 -0.0036847 -0.0021354 0 0 0</pose>
+        <mass>0.0427158737675</mass>
+        <inertia>
+          <ixx>1.51465547522e-06</ixx>
+          <ixy>9.61224858244e-13</ixy>
+          <ixz>-1.11912665393e-08</ixz>
+          <iyy>2.38550029427e-06</iyy>
+          <iyz>9.75100888936e-12</iyz>
+          <izz>1.72118532489e-06</izz>
+        </inertia>
+      </inertial>
+      <visual name="camera_visual">
+        <pose>0 0 0 1.5707 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.008</radius>
+            <length>0.02</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0 0 0 1</ambient>
+          <diffuse>0 0 0 1</diffuse>
+        </material>
+      </visual>
+      <collision name="camera_collision">
+        <pose>0 0 0 1.5707 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.008</radius>
+            <length>0.02</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <sensor name="color" type="camera">
+        <pose>0 0 0 0 0 0</pose>
+        <update_rate>15</update_rate>
+        <always_on>true</always_on>
+        <camera>
+          <horizontal_fov>1.20427718</horizontal_fov>
+          <image>
+            <width>848</width>
+            <height>480</height>
+          </image>
+          <clip>
+            <near>0.1</near>
+            <far>50</far>
+          </clip>
+          <lens>
+            <intrinsics>
+              <fx>615.9603271484375</fx>
+              <fy>616.227294921875</fy>
+              <cx>419.83026123046875</cx>
+              <cy>245.1431427001953</cy>
+              <s>0</s>
+            </intrinsics>
+          </lens>
+        </camera>
+        <ignition_frame_id>camera_link</ignition_frame_id>
+      </sensor>
+    </link>
+    <link name="lidar_link">
+      <pose relative_to="base_link">-0.011026 -0.1512 0 1.5708 0 0</pose>
+      <inertial>
+        <pose>-0.0065398705841951 0.000690713934940602 0.0309531855778308 0 0 0</pose>
+        <mass>0.349560761867</mass>
+        <inertia>
+          <ixx>8.81250395119e-05</ixx>
+          <ixy>-1.54172115757e-06</ixy>
+          <ixz>1.58004720402e-06</ixz>
+          <iyy>0.000115724563923</iyy>
+          <iyz>5.28997038428e-08</iyz>
+          <izz>0.000191147944523</izz>
+        </inertia>
+      </inertial>
+      <visual name="lidar_visual">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.035</radius>
+            <length>0.03</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0 0 0  1</ambient>
+          <diffuse>0 0 0 1</diffuse>
+        </material>
+      </visual>
+      <collision name="lidar_collision">
+        <pose>0 0 0 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.035</radius>
+            <length>0.03</length>
+          </cylinder>
+        </geometry>
+      </collision>
+      <sensor name="scan_front" type="gpu_lidar">
+        <always_on>true</always_on>
+        <update_rate>10</update_rate>
+        <pose>0 0 0 0 0 0</pose>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>720</samples>
+              <resolution>1</resolution>
+              <min_angle>-1.5707963</min_angle>
+              <max_angle> 1.5707963</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>0.12</min>
+            <max>10.0</max>
+            <resolution>0.01</resolution>
+          </range>
+        </lidar>
+        <ignition_frame_id>lidar_link</ignition_frame_id>
+      </sensor>
+    </link>
+    <link name="left_wheel_link">
+      <pose relative_to="base_link">0 0 0.0575 1.5708 0 0</pose>
+      <inertial>
+        <pose>-3.04495944265183e-05 0.0183179040454366 -1.07396547774597e-07 0 0 0</pose>
+        <mass>0.240437768127</mass>
+        <inertia>
+          <ixx>0.000101324859268</ixx>
+          <ixy>-1.0625257545e-07</ixy>
+          <ixz>-1.58120770109e-08</ixz>
+          <iyy>0.000174485024351</iyy>
+          <iyz>-6.59095363539e-10</iyz>
+          <izz>0.0001013794759</izz>
+        </inertia>
+      </inertial>
+      <visual name="left_wheel_visual">
+        <pose>0 0.018 0 1.5707 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.033</radius>
+            <length>0.025</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0 0 0 1</ambient>
+          <diffuse>0 0 0 1</diffuse>
+        </material>
+      </visual>
+      <collision name="left_wheel_collision">
+        <pose>0 0.018 0 1.5707 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.033</radius>
+            <length>0.025</length>
+          </cylinder>
+        </geometry>
+      </collision>
+    </link>
+    <link name="right_wheel_link">
+      <pose relative_to="base_link">0 0 -0.0575 -1.5708 3.14359 3.14359</pose>
+      <inertial>
+        <pose>-3.04495944265183e-05 0.0183179040454366 -1.07396547774597e-07 0 0 0</pose>
+        <mass>0.240437768127</mass>
+        <inertia>
+          <ixx>0.000101324859268</ixx>
+          <ixy>-1.0625257545e-07</ixy>
+          <ixz>-1.58120770109e-08</ixz>
+          <iyy>0.000174485024351</iyy>
+          <iyz>-6.59095363539e-10</iyz>
+          <izz>0.0001013794759</izz>
+        </inertia>
+      </inertial>
+      <visual name="right_wheel_visual">
+        <pose>0 -0.018 0 1.5707 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.033</radius>
+            <length>0.025</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0 0 0 1</ambient>
+          <diffuse>0 0 0 1</diffuse>
+        </material>
+      </visual>
+      <collision name="right_wheel_collision">
+        <pose>0 -0.018 0 1.5707 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.033</radius>
+            <length>0.025</length>
+          </cylinder>
+        </geometry>
+      </collision>
+    </link>
+    <joint name="caster_ball_fix_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>caster_ball_link</child>
+    </joint>
+    <joint name="camera_fix_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>camera_link</child>
+    </joint>
+    <joint name="lidar_fix_joint" type="fixed">
+      <parent>base_link</parent>
+      <child>lidar_link</child>
+    </joint>
+    <joint name="left_wheel_continuous_joint" type="revolute">
+      <parent>base_link</parent>
+      <child>left_wheel_link</child>
+      <axis>
+        <xyz>0 1 0</xyz>
+        <limit>
+          <effort>10</effort>
+        </limit>
+        <dynamics>
+          <damping>0.01</damping>
+          <friction>0.0</friction>
+        </dynamics>
+      </axis>
+    </joint>
+    <joint name="right_wheel_continuous_joint" type="revolute">
+      <parent>base_link</parent>
+      <child>right_wheel_link</child>
+      <axis>
+        <xyz>0 1 0</xyz>
+        <limit>
+          <effort>10</effort>
+        </limit>
+        <dynamics>
+          <damping>0.01</damping>
+          <friction>0.0</friction>
+        </dynamics>
+      </axis>
+    </joint>
+    <plugin filename="ignition-gazebo-diff-drive-system" name="ignition::gazebo::systems::DiffDrive">
+      <left_joint>left_wheel_continuous_joint</left_joint>
+      <right_joint>right_wheel_continuous_joint</right_joint>
+      <wheel_separation>0.15</wheel_separation>
+      <wheel_radius>0.033</wheel_radius>
+      <odom_publish_frequency>20</odom_publish_frequency>
+      <frame_id>odom</frame_id>
+      <child_frame_id>base_link</child_frame_id>
+    </plugin>
+    <plugin filename="ignition-gazebo-pose-publisher-system" name="ignition::gazebo::systems::PosePublisher">
+      <publish_link_pose>true</publish_link_pose>
+      <publish_collision_pose>false</publish_collision_pose>
+      <publish_visual_pose>false</publish_visual_pose>
+      <publish_sensor_pose>false</publish_sensor_pose>
+      <publish_nested_model_pose>true</publish_nested_model_pose>
+      <update_frequency>20</update_frequency>
+    </plugin>
+    <plugin filename="ignition-gazebo-joint-state-publisher-system" name="ignition::gazebo::systems::JointStatePublisher">
+      <topic>/joint_state</topic>
+    </plugin>
+  </model>
+</sdf>
