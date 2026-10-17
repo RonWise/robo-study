@@ -1,0 +1,26 @@
+image_width: 1280
+image_height: 720
+camera_name: jetbot5
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [792.94166,   0.     , 645.1741 ,
+           0.     , 789.98667, 395.999  ,
+           0.     ,   0.     ,   1.     ]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.336095, 0.111510, 0.000631, -0.000720, 0.000000]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1., 0., 0.,
+         0., 1., 0.,
+         0., 0., 1.]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [604.97925,   0.     , 643.89856,   0.     ,
+           0.     , 727.18933, 402.05471,   0.     ,
+           0.     ,   0.     ,   1.     ,   0.     ]

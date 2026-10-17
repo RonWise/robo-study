@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 
 
+# Независимый от ROS алгоритм: один кадр → углы, поворот, смещение и ошибка проекции.
 class MarkerDetector:
     def __init__(self, dictionary_name='DICT_4X4_50', marker_id=0, marker_size=0.24):
         if not dictionary_name.startswith('DICT_') or not hasattr(cv2.aruco, dictionary_name):
@@ -14,13 +15,17 @@ class MarkerDetector:
             raise ValueError('marker_size must be positive (metres)')
         self.marker_id = marker_id
         self.marker_size = marker_size
+        # Поддерживаем старый и новый API ArUco (OpenCV на ноутбуке и Jetbot различается).
         self.parameters = (cv2.aruco.DetectorParameters_create()
                            if hasattr(cv2.aruco, 'DetectorParameters_create')
                            else cv2.aruco.DetectorParameters())
+        # Уточнение углов с субпиксельной точностью уменьшает погрешность оценки позы.
         self.parameters.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
         self.detector = (cv2.aruco.ArucoDetector(self.dictionary, self.parameters)
                          if hasattr(cv2.aruco, 'ArucoDetector') else None)
 
+    # Возвращает None при отсутствии нужного ID или непригодном решении PnP.
+    # Межкадрового сглаживания нет: каждый кадр обрабатывается независимо.
     def detect(self, bgr, matrix, distortion):
         gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
         if self.detector is not None:
@@ -33,24 +38,33 @@ class MarkerDetector:
         matches = np.flatnonzero(ids.reshape(-1) == self.marker_id)
         if not len(matches):
             return None
-        # Select largest if the same ID appears more than once.
+        # Если нужный ID встречается несколько раз, выбираем наибольший по площади.
         index = max(matches, key=lambda i: abs(cv2.contourArea(corners[i][0])))
         image_points = corners[index].reshape(4, 2)
         half = self.marker_size / 2
+        # Четыре угла квадрата в метрах, центр маркера — начало координат.
+        # Порядок соответствует углам, которые возвращает ArUco.
         object_points = np.array([
             [-half, half, 0], [half, half, 0],
             [half, -half, 0], [-half, -half, 0]], dtype=np.float64)
+        # По углам изображения и K/D находим преобразование маркер → камера.
+        # translation — центр маркера в оптических осях; rotation — вектор ось–угол.
         ok, rotation, translation = cv2.solvePnP(
             object_points, image_points.astype(np.float64), matrix, distortion,
             flags=cv2.SOLVEPNP_ITERATIVE)
+        # Глубина должна быть положительной: маркер находится перед камерой.
         if not ok or not np.isfinite(translation).all() or translation[2, 0] <= 0:
             return None
+        # Обратно проецируем углы и считаем RMS-ошибку в пикселях.
+        # Порог отбраковки применяет ROS-узел detector.py, а не этот модуль.
         projected, _ = cv2.projectPoints(object_points, rotation, translation, matrix, distortion)
         error = float(np.sqrt(np.mean(np.sum(
             (projected.reshape(4, 2) - image_points) ** 2, axis=1))))
         return image_points, rotation.reshape(3), translation.reshape(3), error
 
 
+# Перевод вектора Родрига в ROS-кватернион (x, y, z, w).
+# При нулевом угле возвращаем единичный кватернион без деления на ноль.
 def quaternion_from_rvec(rotation):
     angle = float(np.linalg.norm(rotation))
     if angle < 1e-12:

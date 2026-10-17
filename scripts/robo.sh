@@ -95,10 +95,15 @@ case "$command" in
         exec_ros colcon build --symlink-install --packages-select jetbot_target_follower
         exec_ros env ROS_DOMAIN_ID=45 ROS_LOCALHOST_ONLY=1 IGN_PARTITION=robo_hw1 ros2 launch jetbot_target_follower drive_sim.launch.py
         ;;
+    # Готовый клавиатурный узел: команды направляются в router, а не прямо к колёсам.
+    # Ноль (клавиша k) освобождает ручной режим для автономного после тайм-аута mux.
+    # Домен 45 относится только к симулятору, не к физическому Jetbot.
     hw1-teleop)
         running
         exec_ros env ROS_DOMAIN_ID=45 ROS_LOCALHOST_ONLY=1 ros2 run teleop_twist_keyboard teleop_twist_keyboard --ros-args -r cmd_vel:=/cmd_vel_teleop -p speed:=0.12 -p turn:=0.5 -p repeat_rate:=10.0 -p key_timeout:=0.3
         ;;
+    # Готовый просмотрщик показывает размеченный кадр детектора: рамку, оси и расстояние.
+    # Сам просмотрщик не распознаёт маркеры и не публикует команды движения.
     hw1-view)
         gui_running
         exec_ros env ROS_DOMAIN_ID=45 ROS_LOCALHOST_ONLY=1 ros2 run rqt_image_view rqt_image_view /target/debug_image

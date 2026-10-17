@@ -12,11 +12,13 @@ from std_msgs.msg import Bool, Float64, String
 from .control import ControlConfig, Follower
 
 
+# Матрица Rz(yaw) @ Ry(pitch) @ Rx(roll); все углы задаются в радианах.
 def rotation_rpy(r, p, y):
     cx,sx=math.cos(r),math.sin(r); cy,sy=math.cos(p),math.sin(p); cz,sz=math.cos(y),math.sin(y)
     return np.array([[cz,-sz,0],[sz,cz,0],[0,0,1]]) @ np.array([[cy,0,sy],[0,1,0],[-sy,0,cy]]) @ np.array([[1,0,0],[0,cx,-sx],[0,sx,cx]])
 
 
+# ROS-обвязка регулятора: проверяет свежесть, переводит цель в оси корпуса и выдаёт Twist.
 class TargetFollower(Node):
     def __init__(self):
         super().__init__('target_follower')
@@ -28,6 +30,7 @@ class TargetFollower(Node):
             self.declare_parameter(key,value)
         self.config().validate()
         self.add_on_set_parameters_callback(self.validate_params)
+        # Чистая логика состояний и скоростей находится в control.py и не зависит от ROS.
         self.core=Follower()
         self.target=None
         self.target_time=0.
@@ -37,18 +40,23 @@ class TargetFollower(Node):
         self.visible_time=0.
         self.started=self.previous=time.monotonic()
         self.last_state=''
+        # Автономная команда идёт в mux, а не прямо в моторный контроллер.
         self.cmd=self.create_publisher(Twist,'/cmd_vel_nav',1)
         self.state_pub=self.create_publisher(String,'/follower/state',1)
         self.distance_pub=self.create_publisher(Float64,'/target/base_distance',1)
         self.create_subscription(PoseStamped,'/target/pose',self.on_pose,1)
+        # Изображение здесь не распознаётся: его время нужно для контроля живости камеры.
         self.create_subscription(Image,'/camera/image/raw',self.on_image,qos_profile_sensor_data)
         self.create_subscription(Bool,'/target/visible',self.on_visible,1)
         self.create_subscription(Bool,'/teleop/active',lambda m:setattr(self,'manual',m.data),1)
+        # Цикл 20 Гц работает по устойчивым часам, в том числе при паузе симуляции.
         self.create_timer(.05,self.tick,clock=Clock(clock_type=ClockType.STEADY_TIME))
 
+    # Читаем текущие параметры, чтобы изменения через ros2 param set применялись в работе.
     def config(self):
         return ControlConfig(**{k:self.get_parameter(k).value for k in vars(ControlConfig())})
 
+    # Проверяем предложенный набор до применения, включая связанные пороги регулятора.
     def validate_params(self, params):
         values=vars(self.config())
         for param in params:
@@ -61,10 +69,13 @@ class TargetFollower(Node):
         except (ValueError,TypeError) as exc: return SetParametersResult(successful=False,reason=str(exc))
         return SetParametersResult(successful=True)
 
+    # Сравнение с ROS-временем отсекает старые сообщения, задержавшиеся в транспорте.
+    # Допускается небольшой уход метки в будущее (до 0.1 с).
     def fresh_stamp(self, stamp, limit):
         age=self.get_clock().now().nanoseconds*1e-9-(stamp.sec+stamp.nanosec*1e-9)
         return -.1 <= age <= limit
 
+    # Bool не имеет timestamp: отдельно отмечаем монотонное время его получения.
     def on_visible(self,msg):
         self.visible=msg.data
         self.visible_time=time.monotonic()
@@ -78,16 +89,23 @@ class TargetFollower(Node):
         p=msg.pose.position
         t=np.asarray(self.get_parameter('camera_translation').value)
         rotation=rotation_rpy(*self.get_parameter('camera_rotation_rpy').value)
+        # Положение в корпусе = поворот оптических осей + смещение камеры.
+        # Оси корпуса: x вперёд, y влево; для движения по полу используем только x/y.
         point=rotation@np.array([p.x,p.y,p.z])+t
         if not np.isfinite(point).all(): return
         self.target=(float(point[0]),float(point[1]))
         self.target_time=time.monotonic()
+        # Диагностическая дистанция от начала системы корпуса; отличается от camera range.
         self.distance_pub.publish(Float64(data=math.hypot(*self.target)))
 
     def tick(self):
         now=time.monotonic()
+        # Ограничиваем шаг расчёта ускорения, чтобы задержка таймера не дала скачок скорости.
         dt=min(.1,max(.001,now-self.previous)); self.previous=now
+        # Даже видимая цель исключается из управления, если давно не было новой позы.
         target=self.target if self.visible and now-self.target_time<=self.get_parameter('target_timeout').value else None
+        # Для движения должны обновляться и кадры, и сообщения видимости детектора.
+        # enabled отключает только автономные команды; ручной источник остаётся отдельным.
         v,w,state=self.core.step(self.config(),target,now-max(self.target_time,self.started),dt,
             image_fresh=(now-self.image_time<=self.get_parameter('image_timeout').value and now-self.visible_time<=self.get_parameter('image_timeout').value),
             manual=self.manual,enabled=self.get_parameter('enabled').value)
@@ -103,6 +121,7 @@ def main(args=None):
     try:rclpy.spin(node)
     except KeyboardInterrupt:pass
     finally:
+        # При штатном выходе отправляем ноль; это не заменяет watchdog драйвера моторов.
         if rclpy.ok():node.cmd.publish(Twist())
         node.destroy_node()
         if rclpy.ok():rclpy.shutdown()

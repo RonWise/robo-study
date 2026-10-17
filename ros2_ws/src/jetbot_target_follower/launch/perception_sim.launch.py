@@ -17,6 +17,7 @@ def start(context):
     gazebo.append(os.path.join(share, 'worlds', 'hw1_aruco.sdf'))
     return [
         ExecuteProcess(cmd=gazebo, output='screen'),
+        # Односторонний мост камеры и часов Gazebo → ROS; канала команд движения здесь нет.
         Node(package='ros_gz_bridge', executable='parameter_bridge', name='hw1_bridge',
              arguments=[
                  camera + '/image@sensor_msgs/msg/Image[ignition.msgs.Image',
@@ -26,6 +27,7 @@ def start(context):
              remappings=[(camera + '/image', '/camera/image/raw'),
                          (camera + '/camera_info', '/camera/camera_info')],
              output='screen'),
+        # Запускаем только распознавание; результат можно открыть через make hw1-view.
         Node(package='jetbot_target_follower', executable='target_detector',
              name='target_detector', output='screen',
              parameters=[os.path.join(share, 'config', 'detector.yaml'),

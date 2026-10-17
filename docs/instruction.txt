@@ -1,0 +1,117 @@
+make new_ip IP=10.233.197.31
+
+ssh jetbot@10.233.197.31
+
+docker exec -it jetbot_ros2_mipt-jetbot_educational-1 bash
+
+# В контейнере подключи ROS-пакеты:
+cd /home/app/ros2_ws
+source install/setup.bash
+export ROS_DOMAIN_ID=5 ROS_LOCALHOST_ONLY=0
+
+# доступ к камере и GStreamer:
+ls -l /dev/video0 /tmp/argus_socket
+gst-inspect-1.0 nvarguscamerasrc
+gst-inspect-1.0 nvvidconv
+
+# запусти камеру и оставь открытым
+ros2 run pi_camera publish_raw
+
+# Во втором терминале ноутбука открой ещё одну сессию:
+ssh jetbot@10.233.197.31
+docker exec -it jetbot_ros2_mipt-jetbot_educational-1 bash
+
+cd /home/app/ros2_ws
+source install/setup.bash
+export ROS_DOMAIN_ID=5 ROS_LOCALHOST_ONLY=0
+
+ros2 topic list -t
+ros2 topic hz /camera/image/raw
+
+# Проверь наличие калибровки:
+ros2 topic info /camera/camera_info -v
+
+# Если топик существует, прочитай сообщение:
+timeout 10s ros2 topic echo /camera/camera_info --once
+
+
+# Калибровка Jetbot 5 (12.10.2026)
+# Доска: 11x8 клеток, 10x7 внутренних углов; клетка 0.024 м.
+# Режим камеры: 1280x720, без изменения crop/масштаба.
+# Результат на ноутбуке: calibration/jetbot5/jetbot5.yaml
+# Архив исходных кадров: calibration/jetbot5/calibrationdata.tar.gz
+# Драйвер для переноса: scripts/jetbot/publish_raw.py
+# В контейнере Jetbot YAML лежит:
+# /home/app/ros2_ws/src/pi_camera_ros/config/jetbot5.yaml
+# Он загружается при запуске publish_raw, который теперь публикует
+# /camera/image/raw и /camera/camera_info с одинаковым header.
+# Перед повторным запуском остановить предыдущий экземпляр камеры.
+# В контейнере Jetbot:
+cd /home/app/ros2_ws
+source install/setup.bash
+ros2 run pi_camera publish_raw
+# Переопределение пути YAML при необходимости:
+# ros2 run pi_camera publish_raw --ros-args -p calibration_file:=/path/to/camera.yaml
+
+# Сжатие, в отдельном терминале контейнера Jetbot:
+ros2 run image_transport republish raw compressed --ros-args -r __node:=camera_compressor -r in:=/camera/image/raw -r out/compressed:=/camera/image/compressed
+
+# Распаковка, в контейнере НОУТБУКА:
+export ROS_DOMAIN_ID=5 ROS_LOCALHOST_ONLY=0
+ros2 run image_transport republish compressed raw --ros-args -r __node:=camera_decompressor -r in/compressed:=/camera/image/compressed -r out:=/calibration/image_raw
+
+# Повторная калибровка, в другом терминале контейнера ноутбука:
+ros2 run camera_calibration cameracalibrator --size 10x7 --square 0.024 --camera_name jetbot5 --no-service-check --ros-args -r image:=/calibration/image_raw
+# После CALIBRATE нажать SAVE, не COMMIT.
+# Архив: /tmp/calibrationdata.tar.gz в контейнере ноутбука.
+# Повторное SAVE перезапишет временный архив; перед заменой сохранённой
+# калибровки сохранить предыдущий результат отдельно.
+
+# камера
+[robo] /work/ros2_ws$ ros2 run rqt_image_view rqt_image_view /calibration/image_raw
+
+
+# Геометрия и управление реальным Jetbot 5 (12.10.2026)
+# Объектив на 0.05 м впереди оси ведущих колёс, наклон вниз примерно 15 градусов.
+# Камера предполагается по центру, без бокового поворота и крена.
+# Высота не измерена: в конфигурации z=0, для плоского управления используются x/y.
+# Эта конфигурация не является полной измеренной 3D-калибровкой TF.
+# camera_rotation_rpy=[-1.8325957145940461, 0.0, -1.5707963267948966]
+# Углы относятся к преобразованию оптических осей в оси робота,
+# поэтому первый угол -105 градусов, хотя физический наклон вниз — 15 градусов.
+# x_robot = cos(15 deg)*z_camera - sin(15 deg)*y_camera + 0.05
+# y_robot = -x_camera
+# stop_distance=0.5 м: горизонтальное расстояние от середины оси колёс до цели.
+# /target/distance и подпись range: 3D-расстояние от камеры до маркера.
+# /target/base_distance: плоское расстояние от середины оси колёс, для регулятора.
+# Проверки рулеткой от камеры: 20->~20, 40->40, 60->62, 80->82 см.
+# max_linear_speed=0.05 м/с, max_angular_speed=0.3 рад/с; enabled=false.
+# Файл: ros2_ws/src/jetbot_target_follower/config/follower_jetbot5.yaml
+
+# В контейнере Jetbot; камера и target_detector должны работать отдельно.
+# Перед повторным запуском завершить предыдущий control_jetbot5.launch.py.
+cd /home/app/ros2_ws
+source install/setup.bash
+export ROS_DOMAIN_ID=5 ROS_LOCALHOST_ONLY=0
+ros2 launch jetbot_target_follower control_jetbot5.launch.py
+# По умолчанию выход — /jetbot_hw1/cmd_vel_preview, к моторам не подключён.
+# Это запускает target_follower, twist_mux и command_router.
+# Камера, распознавание и моторный драйвер этим launch НЕ запускаются.
+
+# В другом терминале контейнера Jetbot:
+ros2 topic echo /follower/state
+ros2 topic echo /target/base_distance
+ros2 topic echo /jetbot_hw1/cmd_vel_preview
+# Пока enabled=false, автономный выход должен быть нулевым (DISABLED).
+# Ручной источник имеет отдельный приоритет и не отключается параметром enabled.
+
+# Для последующего подключения моторного драйвера целевой топик:
+# /diffbot_base_controller/cmd_vel_unstamped
+# Launch принимает аргумент cmd_vel_topic для выбора конечного топика.
+# На этапе проверки геометрии оставляем cmd_vel_topic по умолчанию.
+# Не запускать одновременно штатный activate_all_drivers (с его twist_mux)
+# и второй mux, оба пишущие в один моторный топик.
+# Первую проверку направлений колёс проводить с вывешенными колёсами.
+# Сохранённый параметр драйвера cmd_vel_timeout=0.5 с ещё нужно проверить в работе.
+# Остановка автономного управления (не отменяет отдельные ручные команды):
+ros2 param set /target_follower enabled false

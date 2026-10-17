@@ -1,0 +1,33 @@
+target_follower:
+  ros__parameters:
+    use_sim_time: false
+    enabled: false
+    # Planar distance from the midpoint of the drive-wheel axle to the marker.
+    stop_distance: 0.5
+    max_linear_speed: 0.05
+    max_angular_speed: 0.3
+    kp_distance: 0.65
+    kp_angle: 1.8
+    distance_tolerance: 0.02
+    arrival_hysteresis: 0.04
+    turn_in_place_angle: 0.4
+    search_speed: 0.15
+    search_delay: 0.6
+    linear_acceleration: 0.1
+    angular_acceleration: 0.6
+    image_timeout: 0.8
+    target_timeout: 0.5
+    # Measured forward offset: 5 cm. Assumed centered laterally.
+    # Height is unmeasured and set to zero: only transformed x/y are used.
+    # Do not use this translation as a full 3D TF calibration.
+    camera_translation: [0.05, 0.0, 0.0]
+    # Optical x=right, y=down, z=forward. Camera pitched down by ~15 deg.
+    # Ry(+15 deg) @ Rz(-90 deg) @ Rx(-90 deg) = Rz(-90 deg) @ Rx(-105 deg).
+    camera_rotation_rpy: [-1.8325957145940461, 0.0, -1.5707963267948966]
+command_router:
+  ros__parameters:
+    use_sim_time: false
+    command_timeout: 0.3
+    teleop_timeout: 0.4
+    max_linear_speed: 0.05
+    max_angular_speed: 0.3

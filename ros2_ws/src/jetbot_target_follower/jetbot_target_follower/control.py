@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import math
 
 
+# Параметры в единицах СИ: метры, секунды, радианы и производные от них.
 @dataclass
 class ControlConfig:
     stop_distance: float = 0.5
@@ -26,21 +27,27 @@ class ControlConfig:
             raise ValueError('distance_tolerance must be less than stop_distance')
 
 
+# Логика управления без ROS: удобна для проверки переходов состояний на обычных данных.
 class Follower:
     def __init__(self):
         self.arrived = False
         self.v = self.w = 0.0
         self.search_direction = 1.0
 
+    # target — (x, y) в корпусе или None; lost_for — время с последней принятой позы.
+    # Результат: линейная скорость, угловая скорость и строковое имя состояния.
     def step(self, cfg, target, lost_for, dt, image_fresh=True, manual=False, enabled=True):
         if target is not None:
             bearing = math.atan2(target[1], target[0])
             if abs(bearing) > 0.03:
                 self.search_direction = 1.0 if bearing > 0 else -1.0
+        # Отключение, ручной режим и устаревшее изображение обнуляют автономный выход сразу.
         if not enabled or not image_fresh or manual:
             self.v = self.w = 0.0
             self.arrived = False
             return self.v, self.w, ('DISABLED' if not enabled else 'MANUAL' if manual else 'NO_IMAGE')
+        # LOST: короткая остановка; SEARCH: вращение в сторону последнего направления цели.
+        # Движение вперёд без видимой цели запрещено. Это поиск, а не обход препятствий.
         if target is None:
             self.arrived = False
             self.v = 0.0
@@ -52,7 +59,10 @@ class Follower:
         angle = math.atan2(y, x)
         if abs(angle) > 0.03:
             self.search_direction = 1.0 if angle > 0 else -1.0
+        # Положительная ошибка — нужно приблизиться; отрицательная — немного отъехать.
         error = distance - cfg.stop_distance
+        # Гистерезис: выходим из ARRIVED дальше от заданной дистанции, чем входим.
+        # Это предотвращает постоянные старты/остановки из-за небольшого шума измерений.
         if self.arrived and abs(error) > cfg.distance_tolerance + cfg.arrival_hysteresis:
             self.arrived = False
         if abs(error) <= cfg.distance_tolerance:
@@ -60,14 +70,19 @@ class Follower:
         if self.arrived:
             self.v = self.w = 0.0
             return 0.0, 0.0, 'ARRIVED'
+        # Два P-регулятора: направление управляет поворотом, расстояние — линейной скоростью.
         w = max(-cfg.max_angular_speed, min(cfg.max_angular_speed, cfg.kp_angle * angle))
+        # Задний ход дополнительно ограничен 0.06 м/с и общим пределом скорости.
         v = max(-min(.06, cfg.max_linear_speed), min(cfg.max_linear_speed, cfg.kp_distance * error))
+        # Чем сильнее цель сбоку, тем медленнее поступательное движение.
         v *= max(0., math.cos(angle))
         if abs(angle) > cfg.turn_in_place_angle:
             v = 0.0
+        # Ограничиваем изменение скорости величиной ускорение × длительность шага.
         def slew(old, desired, rate):
             return old + max(-rate * dt, min(rate * dt, desired - old))
-        # Stop forward motion immediately when the target is outside the steering cone.
+        # За пределами углового порога линейная скорость обнуляется сразу, без плавного спада.
+        # ALIGN разворачивает к цели, APPROACH совмещает поворот и движение.
         self.v = 0.0 if abs(angle) > cfg.turn_in_place_angle else slew(self.v, v, cfg.linear_acceleration)
         self.w = slew(self.w, w, cfg.angular_acceleration)
         return self.v, self.w, 'ALIGN' if abs(angle) > cfg.turn_in_place_angle else 'APPROACH'

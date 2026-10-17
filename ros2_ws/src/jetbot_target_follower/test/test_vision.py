@@ -12,7 +12,10 @@ class VisionTests(unittest.TestCase):
 
     def synthetic_image(self, marker_id=0, x=0.0, distance=1.5):
         dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-        marker = cv2.aruco.drawMarker(dictionary, marker_id, 240)
+        draw_marker = (cv2.aruco.generateImageMarker
+                       if hasattr(cv2.aruco, 'generateImageMarker')
+                       else cv2.aruco.drawMarker)
+        marker = draw_marker(dictionary, marker_id, 240)
         half = .12
         points = np.array([[-half,half,0],[half,half,0],[half,-half,0],[-half,-half,0]])
         rotation = np.array([np.pi, 0., 0.])
