@@ -15,7 +15,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     ros-humble-teleop-twist-keyboard ros-humble-twist-mux \
     ros-humble-navigation2 ros-humble-nav2-bringup ros-humble-slam-toolbox \
     ros-humble-xacro ros-humble-joint-state-publisher-gui \
-    ros-humble-robot-state-publisher \
+    ros-humble-robot-state-publisher ros-humble-ros2controlcli \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid "${HOST_GID}" student \
