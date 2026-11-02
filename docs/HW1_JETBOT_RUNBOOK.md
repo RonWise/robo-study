@@ -2,7 +2,7 @@
 
 Инструкция для повторного запуска движения реального Jetbot 5 к ArUco после уже выполненной калибровки камеры. Камера, распознавание и управление работают в контейнере **на Jetbot**; ноутбук нужен для SSH, просмотра изображения и диагностики.
 
-Документ подготовлен **17 октября 2026 года** по сохранённым файлам проекта и результатам предыдущей настройки. Повторная проверка на подключённом роботе при подготовке документа не выполнялась. В конце предыдущего сеанса пользователь подтвердил успешный запуск движения. Серия из пяти зачётных заездов на физическом роботе ещё не зафиксирована.
+Документ подготовлен **17 октября 2026 года** по сохранённым файлам проекта и результатам предыдущей настройки. **19 октября 2026 года** пути, bind mounts, установленные пакеты и конфигурация контейнера сверены по SSH с Jetbot `10.233.197.31`. Камера и движение при этой сверке не запускались. В конце предыдущего сеанса пользователь подтвердил успешный запуск движения. Серия из пяти зачётных заездов на физическом роботе ещё не зафиксирована.
 
 Повторять калибровку при обычном включении не требуется: `publish_raw` загружает сохранённый YAML. Инструкция рассчитана на прежнюю камеру, режим **1280×720** и прежнюю оптику. При изменении разрешения, crop или фокуса применимость внутренних параметров нужно проверить; при изменении крепления камеры — обновить её положение относительно корпуса.
 
@@ -34,7 +34,7 @@
 |---|---|
 | Топики не приходили на ноутбук, хотя SSH работал | Согласовали домен 5, отключили ограничение ROS на localhost, использовали сеть хоста в Docker. Для меняющегося IP добавили `make new_ip`, обновляющий firewall ноутбука. |
 | При чтении камеры через V4L2 было серое изображение или тайм-аут | Устройство сообщало Bayer RG10. Рабочий цветной захват построили через Jetson Argus и GStreamer с преобразованием NV12 → BGRx → BGR. |
-| В контейнере отсутствовал `nvarguscamerasrc`, хотя на хосте он был | Выявили необходимость доступа к NVIDIA-библиотекам, устройствам и `/tmp/argus_socket`. После настройки контейнера Argus-захват заработал и внутри него. Точную итоговую копию Compose нужно сохранить при следующем подключении. |
+| В контейнере отсутствовал `nvarguscamerasrc`, хотя на хосте он был | Выявили необходимость доступа к NVIDIA-библиотекам, устройствам и `/tmp/argus_socket`. После настройки контейнера Argus-захват заработал и внутри него. Фактическая конфигурация контейнера сохранена 19 октября в [копии Compose](jetbot/docker-compose.2026-10-19.yaml). |
 | OpenCV в контейнере показывал `GStreamer: NO` | В `publish_raw.py` запуск GStreamer вынесен в отдельный процесс через `subprocess.Popen`; поддержка GStreamer в OpenCV для захвата больше не требуется. |
 | Не было `/camera/camera_info` | Драйвер научили читать сохранённую калибровку, проверять разрешение и матрицы, публиковать CameraInfo вместе с Image с одинаковым header. |
 | Возможное смешивание бинарного кадра и служебного вывода Argus | В итоговом драйвере используется отдельный файловый дескриптор: `os.pipe`, `fdsink fd=...` и `pass_fds`. Изображение не читается из stdout с сообщениями GStreamer. |
@@ -68,6 +68,36 @@
 ```
 
 Поэтому исходники и YAML в `src` сохраняются при пересоздании контейнера. Каталоги `build`, `install` и пакеты, установленные только внутри контейнера, не гарантированно сохранятся при его удалении. Обычный `docker stop/start` сохраняет слой существующего контейнера.
+
+## Результат проверки путей по SSH 19 октября 2026 года
+
+Расхождений в указанных каталогах не найдено. Подтверждено соответствие путей:
+
+| На хосте Jetbot | В контейнере Jetbot |
+|---|---|
+| `/home/jetbot/IntelligentRobotics/jetbot_ros2_mipt/src` | `/home/app/ros2_ws/src` |
+| `src/pi_camera_ros/pi_camera/publish_raw.py` относительно проекта | `/home/app/ros2_ws/src/pi_camera_ros/pi_camera/publish_raw.py` |
+| `src/pi_camera_ros/config/jetbot5.yaml` относительно проекта | `/home/app/ros2_ws/src/pi_camera_ros/config/jetbot5.yaml` |
+| `src/pi_camera_ros/setup.py` относительно проекта | `/home/app/ros2_ws/src/pi_camera_ros/setup.py` |
+| `src/jetbot_target_follower` относительно проекта | `/home/app/ros2_ws/src/jetbot_target_follower` |
+
+`/home/app/ros2_ws` — workspace **внутри контейнера**. После обычного SSH вы находитесь на хосте под пользователем `jetbot`, где рабочий проект расположен в `/home/jetbot/IntelligentRobotics/jetbot_ros2_mipt`. Команда `cd ~/ros2_ws` на хосте не является заменой входа в контейнер.
+
+Проверены файлы `/home/app/ros2_ws/install/setup.bash` и `/opt/ros/humble/install/setup.bash`. После подключения окружения `ros2 pkg prefix` находит:
+
+| Пакет | Префикс установки в контейнере |
+|---|---|
+| `pi_camera` | `/home/app/ros2_ws/install/pi_camera` |
+| `jetbot_target_follower` | `/home/app/ros2_ws/install/jetbot_target_follower` |
+| `diffdrive_jetbot` | `/home/app/ros2_ws/install/diffdrive_jetbot` |
+| `jetbot_bringup` | `/home/app/ros2_ws/install/jetbot_bringup` |
+| `twist_mux`, `image_transport`, `compressed_image_transport` | `/opt/ros/humble/install` |
+
+Установленные `control_jetbot5.launch.py` и `follower_jetbot5.yaml` через ссылки ведут к существующим файлам в `src/jetbot_target_follower`. Исходник моторного launch находится в `src/diffdrive_jetbot/bringup/launch/diffbot.launch.py`, а установленный — в `install/diffdrive_jetbot/share/diffdrive_jetbot/launch/diffbot.launch.py`. Вызов `ros2 launch diffdrive_jetbot diffbot.launch.py` использует установленный пакет, поэтому знать внутреннюю папку `bringup` для запуска не требуется.
+
+Контрольные суммы SHA-256 четырёх файлов на Jetbot совпали с копиями в проекте ноутбука: `publish_raw.py`, `jetbot5.yaml`, `detector_jetbot5.yaml` и `follower_jetbot5.yaml`. В `pi_camera_ros/setup.py` присутствует entry point `publish_raw = pi_camera.publish_raw:main`.
+
+Работает контейнер `jetbot_ros2_mipt-jetbot_educational-1`. Найдены также старые остановленные контейнеры с именами `jetbot_ros2_mipt-jetbot_educational-run-93571ef7ca3b` и `jetbot_ros2_mipt-jetbot-1`; команды этой инструкции относятся к первому, действующему контейнеру.
 
 ## Последовательность обычного запуска
 
@@ -513,7 +543,7 @@ scp -r ros2_ws/src/jetbot_target_follower \
 
 ## Проверка контейнера и Argus при неисправности камеры
 
-Полная итоговая копия `docker-compose.yml` робота не сохранена в этом проекте. Поэтому ниже — проверка требований, а не готовая замена файла. Локальный [compose.yaml](../compose.yaml) относится к **ноутбуку**, изменять его для проброса камеры Jetbot не требуется.
+Фактический `docker-compose.yml` с робота сохранён 19 октября 2026 года: [копия конфигурации Jetbot](jetbot/docker-compose.2026-10-19.yaml). Это снимок файла `/home/jetbot/IntelligentRobotics/jetbot_ros2_mipt/docker-compose.yml`, а не конфигурация ноутбука. Его относительный mount `./src` рассчитан на исходный каталог проекта на Jetbot; не запускайте эту копию из `docs/jetbot`. Локальный [compose.yaml](../compose.yaml) относится к **ноутбуку**, изменять его для проброса камеры Jetbot не требуется.
 
 На **хосте Jetbot**:
 
@@ -527,7 +557,7 @@ ls -l /tmp/argus_socket
 ls -ln /dev/video0 /dev/nvmap /dev/nvhost-vic
 ```
 
-Проверяются: runtime NVIDIA, host network, bind mount `src`, доступ контейнера к Argus-сокету и устройствам Jetson. В прежнем выводе `nvmap` и `nvhost-vic` имели владельца root и группу с GID **44**, поэтому доступ пользователя `app` к этой группе имеет значение.
+Проверяются: runtime NVIDIA, host network, bind mount `src`, доступ контейнера к Argus-сокету и устройствам Jetson. При проверке 19 октября `nvmap` и `nvhost-vic` имели владельца root и группу с GID **44**; пользователь `app` внутри контейнера входит в эту группу (`video`).
 
 В **контейнере Jetbot**:
 
@@ -539,7 +569,7 @@ gst-inspect-1.0 nvarguscamerasrc
 gst-inspect-1.0 nvvidconv
 ```
 
-При восстановлении Compose существенны NVIDIA runtime, `NVIDIA_VISIBLE_DEVICES=all`, `NVIDIA_DRIVER_CAPABILITIES=all`, mount `/tmp/argus_socket`, доступ к NVIDIA-устройствам и подходящие дополнительные группы. Одного `/dev/video0` для всей цепочки Argus и nvvidconv недостаточно. После изменения Compose простой `docker restart` не применяет новые mounts и environment: потребуется пересоздание контейнера с сохранением исходников.
+В проверенном файле Compose заданы `runtime: nvidia`, `network_mode: host`, `group_add: ["44"]`, `NVIDIA_VISIBLE_DEVICES=all`, `LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libGLdispatch.so.0` и mount `/tmp/argus_socket`. Переменная `NVIDIA_DRIVER_CAPABILITIES` в этом файле не задана. Устройства `nvmap` и `nvhost-vic` доступны в запущенном контейнере, хотя отдельно в списке `devices` этого Compose не указаны. Одного `/dev/video0` для всей цепочки Argus и nvvidconv недостаточно. После изменения Compose простой `docker restart` не применяет новые mounts и environment: потребуется пересоздание контейнера с сохранением исходников.
 
 Если `gst-inspect` сообщает именно ошибку static TLS для `libGLdispatch.so.0`, можно проверить раннюю загрузку библиотеки **в контейнере Jetbot**:
 
@@ -551,7 +581,7 @@ LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libGLdispatch.so.0 \
 
 Это диагностическая команда с отдельным реестром плагинов; она не исправляет права на устройства и не заменяет NVIDIA runtime. Ошибка `Can't initialize nvrm channel` требует отдельной проверки видимости устройств и прав пользователя, а не автоматического вывода, что закончилась оперативная память.
 
-При следующем подключении стоит сохранить фактический рабочий `docker-compose.yml` с Jetbot в репозитории: это устранит оставшийся пробел для восстановления контейнера с нуля.
+Копия Compose фиксирует параметры запуска, но не содержит сам образ `jetbot_full_ros2` и изменения его файлового слоя. Для восстановления с нуля по-прежнему нужны образ и исходники; после пересоздания проверьте установленные пакеты и пересоберите workspace при необходимости.
 
 ## Быстрая диагностика повторяющихся проблем
 

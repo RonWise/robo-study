@@ -1,0 +1,31 @@
+services:
+  jetbot_educational:
+    # image: jetbot_main_docker
+    image: jetbot_full_ros2
+    # privileged: True
+    cap_add:
+     - SYS_NICE
+    ulimits:
+      rtprio: 99
+      memlock: -1
+    runtime: nvidia
+    restart: always
+    network_mode: host
+    group_add:
+      - "44"  # video
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./src:/home/app/ros2_ws/src
+      - /tmp/argus_socket:/tmp/argus_socket
+    environment:
+      - DISPLAY
+      - ROS_DOMAIN_ID=5
+      - ROS_LOCALHOST_ONLY=0
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - NVIDIA_VISIBLE_DEVICES=all
+      - LD_PRELOAD=/usr/lib/aarch64-linux-gnu/libGLdispatch.so.0
+    devices:
+      - /dev/input:/dev/input
+      - /dev/ttyLIDAR:/dev/ttyLIDAR
+      - /dev/ttyMOTOR:/dev/ttyMOTOR
+      - /dev/video0:/dev/video0
